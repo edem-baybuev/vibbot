@@ -4,6 +4,7 @@ from datetime import date
 from datetime import datetime, timedelta
 import os
 import asyncio
+from urllib.parse import urlparse
 db_pool = None
 
 async def init_db_pool():
