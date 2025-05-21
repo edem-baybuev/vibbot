@@ -8,14 +8,26 @@ db_pool = None
 
 async def init_db_pool():
     global db_pool
+    
+    # Получаем строку подключения из переменных окружения
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL не задан в переменных окружения!")
+    
+    # Разбираем URL
+    parsed = urlparse(db_url)
+    
+    # Создаем пул подключений с SSL
     db_pool = await aiomysql.create_pool(
-        host= os.getenv("DB_HOST", "localhost"),
-        port= int(os.getenv("DB_PORT", 3306)),
-        user= os.getenv("DB_USER"),
-        password= os.getenv("DB_PASSWORD"),
-        db= os.getenv("DB_NAME"),      
-        autocommit=True
-    )
+            host=parsed.hostname,
+            port=parsed.port or 3306,
+            user=parsed.username,
+            password=parsed.password,
+            db=parsed.path[1:],  # убираем первый "/"
+            autocommit=True,
+           
+        )
+
     try:
         async with db_pool.acquire() as conn:
             async with conn.cursor() as cur:
