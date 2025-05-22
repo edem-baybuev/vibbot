@@ -4,30 +4,35 @@ from datetime import date
 from datetime import datetime, timedelta
 import os
 import asyncio
+import ssl
 from urllib.parse import urlparse
 db_pool = None
 
 async def init_db_pool():
     global db_pool
     
-    # Получаем строку подключения из переменных окружения
-    db_url = os.getenv("DATABASE_URL")
+    # Берем правильную переменную окружения
+    db_url = os.getenv("SCALINGO_MYSQL_URL")
     if not db_url:
-        raise ValueError("DATABASE_URL не задан в переменных окружения!")
-    
-    # Разбираем URL
+        raise ValueError("SCALINGO_MYSQL_URL не задана!")
+
     parsed = urlparse(db_url)
-    
-    # Создаем пул подключений с SSL
+
+    # Создаем SSL-контекст
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    # Создаем пул
     db_pool = await aiomysql.create_pool(
-            host=parsed.hostname,
-            port=parsed.port or 3306,
-            user=parsed.username,
-            password=parsed.password,
-            db=parsed.path[1:],  # убираем первый "/"
-            autocommit=True,
-           
-        )
+        host=parsed.hostname,
+        port=parsed.port or 3306,
+        user=parsed.username,
+        password=parsed.password,
+        db=parsed.path.lstrip('/'),  # убираем начальный "/"
+        autocommit=True,
+        ssl=ssl_context
+    )
 
     try:
         async with db_pool.acquire() as conn:
